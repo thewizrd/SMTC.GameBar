@@ -213,6 +213,9 @@
     <PackageReference Include="Microsoft.UI.Xaml">
       <Version>2.7.1</Version>
     </PackageReference>
+    <PackageReference Include="NPSMLib">
+      <Version>0.9.14</Version>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <Page Include="PlayerWidget.xaml">

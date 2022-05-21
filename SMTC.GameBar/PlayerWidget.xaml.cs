@@ -1,4 +1,5 @@
 ﻿using Microsoft.Gaming.XboxGameBar;
+using NPSMLib;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,8 +9,6 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
-using Windows.Media;
-using Windows.Media.Control;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
@@ -33,10 +32,11 @@ namespace SMTC.GameBar
         private XboxGameBarWidget widget;
         private PlayerViewModel PlayerViewModel { get; set; }
 
-        private GlobalSystemMediaTransportControlsSessionManager SMTCManager;
-        private IReadOnlyList<GlobalSystemMediaTransportControlsSession> MediaSessions;
+        private NowPlayingSessionManager NPSManager;
+        private IList<NowPlayingSession> MediaSessions;
 
-        private GlobalSystemMediaTransportControlsSession MediaSession;
+        private NowPlayingSession MediaSession;
+        private MediaPlaybackDataSource MediaPlaybackSource;
         private int SessionIndex = 0;
 
         public PlayerWidget()
@@ -63,33 +63,34 @@ namespace SMTC.GameBar
             StopService();
         }
 
-        private async void StartService()
+        private void StartService()
         {
-            if (SMTCManager != null)
+            if (NPSManager != null)
             {
                 StopService();
             }
 
-            SMTCManager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-            SMTCManager.SessionsChanged += SMTCManager_SessionsChanged;
-            SMTCManager.CurrentSessionChanged += SMTCManager_CurrentSessionChanged;
-            ReloadSessions(SMTCManager);
+            try
+            {
+                NPSManager = new NowPlayingSessionManager();
+                NPSManager.SessionListChanged += NPSManager_SessionsChanged;
+                ReloadSessions(NPSManager);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
         }
 
-        private void SMTCManager_SessionsChanged(GlobalSystemMediaTransportControlsSessionManager sender, SessionsChangedEventArgs args)
+        private void NPSManager_SessionsChanged(object sender, NowPlayingSessionManagerEventArgs args)
         {
-            ReloadSessions(sender);
+            ReloadSessions(sender as NowPlayingSessionManager ?? NPSManager);
         }
 
-        private void SMTCManager_CurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, CurrentSessionChangedEventArgs args)
-        {
-            // no-op
-        }
-
-        private async void ReloadSessions(GlobalSystemMediaTransportControlsSessionManager sessionManager)
+        private async void ReloadSessions(NowPlayingSessionManager sessionManager)
         {
             MediaSessions = sessionManager?.GetSessions();
-            SessionIndex = FindIndexOfCurrentSession(sessionManager.GetCurrentSession());
+            SessionIndex = FindIndexOfCurrentSession(sessionManager.CurrentSession);
 
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
@@ -110,13 +111,13 @@ namespace SMTC.GameBar
             await LoadSession();
         }
 
-        private int FindIndexOfCurrentSession(GlobalSystemMediaTransportControlsSession currentSession)
+        private int FindIndexOfCurrentSession(NowPlayingSession currentSession)
         {
             int i = 0;
 
             foreach (var session in MediaSessions)
             {
-                if (Equals(currentSession.SourceAppUserModelId, session.SourceAppUserModelId))
+                if (Equals(currentSession.SourceAppId, session.SourceAppId))
                 {
                     return i;
                 }
@@ -135,61 +136,66 @@ namespace SMTC.GameBar
 
             if (MediaSession != null)
             {
-                MediaSession.PlaybackInfoChanged += MediaSession_PlaybackInfoChanged;
-                MediaSession.MediaPropertiesChanged += MediaSession_MediaPropertiesChanged;
-                MediaSession.TimelinePropertiesChanged += MediaSession_TimelinePropertiesChanged;
+                MediaPlaybackSource = MediaSession.ActivateMediaPlaybackDataSource();
+                MediaPlaybackSource.MediaPlaybackDataChanged += MediaPlaybackSource_MediaPlaybackDataChanged;
 
-                await UpdatePlayer(MediaSession);
+                await UpdatePlayer(MediaPlaybackSource);
             }
         }
 
         private void StopService()
         {
             // Unregister events
-            if (SMTCManager != null)
+            if (NPSManager != null)
             {
-                SMTCManager.SessionsChanged -= SMTCManager_SessionsChanged;
-                SMTCManager.CurrentSessionChanged -= SMTCManager_CurrentSessionChanged;
+                try
+                {
+                    NPSManager.SessionListChanged -= NPSManager_SessionsChanged;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex);
+                }
             }
 
-            SMTCManager = null;
+            NPSManager = null;
             MediaSessions = null;
         }
 
         private void UnloadSession()
         {
-            if (MediaSession != null)
+            if (MediaPlaybackSource != null)
             {
-                MediaSession.PlaybackInfoChanged -= MediaSession_PlaybackInfoChanged;
-                MediaSession.MediaPropertiesChanged -= MediaSession_MediaPropertiesChanged;
-                MediaSession.TimelinePropertiesChanged -= MediaSession_TimelinePropertiesChanged;
-                MediaSession = null;
+                MediaPlaybackSource.MediaPlaybackDataChanged -= MediaPlaybackSource_MediaPlaybackDataChanged;
             }
+            MediaPlaybackSource = null;
+            MediaSession = null;
         }
 
-        private async Task UpdatePlayer(GlobalSystemMediaTransportControlsSession mediaSession)
+        private async Task UpdatePlayer(MediaPlaybackDataSource source)
         {
-            await UpdateMediaProperties(mediaSession);
-            await UpdateTimeline(mediaSession);
-            await UpdatePlaybackInfo(mediaSession);
+            await UpdateMediaProperties(source);
+            await UpdateTimeline(source);
+            await UpdatePlaybackInfo(source);
         }
 
-        private async Task UpdateMediaProperties(GlobalSystemMediaTransportControlsSession mediaSession)
+        private async Task UpdateMediaProperties(MediaPlaybackDataSource source)
         {
-            var mediaProperties = await mediaSession.TryGetMediaPropertiesAsync();
+            var mediaObjectInfo = source.GetMediaObjectInfo();
+            var thumbnailStream = source.GetThumbnailStream();
 
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
             {
-                PlayerViewModel.Title = mediaProperties.Title;
-                PlayerViewModel.Artist = mediaProperties.Artist;
-                PlayerViewModel.Album = mediaProperties.AlbumTitle;
-                await PlayerViewModel.UpdateThumbnail(mediaProperties.Thumbnail);
+                PlayerViewModel.Title = mediaObjectInfo.Title;
+                PlayerViewModel.Artist = mediaObjectInfo.Artist;
+                PlayerViewModel.Album = mediaObjectInfo.AlbumTitle;
+                await PlayerViewModel.UpdateThumbnail(thumbnailStream);
             });
         }
 
-        private async Task UpdateTimeline(GlobalSystemMediaTransportControlsSession mediaSession)
+        private async Task UpdateTimeline(MediaPlaybackDataSource source)
         {
-            var timelineProperties = mediaSession.GetTimelineProperties();
+            var timelineProperties = source.GetMediaTimelineProperties();
 
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
@@ -197,42 +203,46 @@ namespace SMTC.GameBar
             });
         }
 
-        private async Task UpdatePlaybackInfo(GlobalSystemMediaTransportControlsSession mediaSession)
+        private async Task UpdatePlaybackInfo(MediaPlaybackDataSource source)
         {
-            var playbackInfo = mediaSession.GetPlaybackInfo();
+            var playbackInfo = source.GetMediaPlaybackInfo();
 
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                PlayerViewModel.IsShuffleActive = playbackInfo.IsShuffleActive ?? false;
-                PlayerViewModel.AutoRepeatMode = playbackInfo.AutoRepeatMode ?? Windows.Media.MediaPlaybackAutoRepeatMode.None;
-                PlayerViewModel.IsPlaying = playbackInfo.PlaybackStatus switch
+                var playerCapabilities = playbackInfo.PlaybackCaps;
+                var playerValidProps = playbackInfo.PropsValid;
+
+                PlayerViewModel.IsShuffleActive = playerValidProps.HasFlag(MediaPlaybackProps.ShuffleEnabled) ? playbackInfo.ShuffleEnabled : false;
+                PlayerViewModel.AutoRepeatMode = playerValidProps.HasFlag(MediaPlaybackProps.AutoRepeatMode) ? playbackInfo.RepeatMode : MediaPlaybackRepeatMode.Unknown;
+                PlayerViewModel.IsPlaying = (playerValidProps.HasFlag(MediaPlaybackProps.State) ? playbackInfo.PlaybackState : MediaPlaybackState.Unknown) switch
                 {
-                    GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing => true,
+                    MediaPlaybackState.Playing => true,
                     _ => false,
                 };
 
-                PlayerViewModel.IsShuffleEnabled = playbackInfo.Controls.IsShuffleEnabled;
-                PlayerViewModel.IsRepeatEnabled = playbackInfo.Controls.IsRepeatEnabled;
-                PlayerViewModel.IsPlaybackPositionEnabled = playbackInfo.Controls.IsPlaybackPositionEnabled;
-                PlayerViewModel.IsPreviousEnabled = playbackInfo.Controls.IsPreviousEnabled;
-                PlayerViewModel.IsNextEnabled = playbackInfo.Controls.IsNextEnabled;
-                PlayerViewModel.IsPlayPauseEnabled = playbackInfo.Controls.IsPlayPauseToggleEnabled;
+                PlayerViewModel.IsShuffleEnabled = playerCapabilities.HasFlag(MediaPlaybackCapabilities.Shuffle);
+                PlayerViewModel.IsRepeatEnabled = playerCapabilities.HasFlag(MediaPlaybackCapabilities.Repeat);
+                PlayerViewModel.IsPlaybackPositionEnabled = playerCapabilities.HasFlag(MediaPlaybackCapabilities.PlaybackPosition);
+                PlayerViewModel.IsPreviousEnabled = playerCapabilities.HasFlag(MediaPlaybackCapabilities.Previous);
+                PlayerViewModel.IsNextEnabled = playerCapabilities.HasFlag(MediaPlaybackCapabilities.Next);
+                PlayerViewModel.IsPlayPauseEnabled = playerCapabilities.HasFlag(MediaPlaybackCapabilities.PlayPauseToggle);
             });
         }
 
-        private async void MediaSession_TimelinePropertiesChanged(GlobalSystemMediaTransportControlsSession sender, TimelinePropertiesChangedEventArgs args)
+        private async void MediaPlaybackSource_MediaPlaybackDataChanged(object sender, MediaPlaybackDataChangedArgs e)
         {
-            await UpdateTimeline(sender);
-        }
-
-        private async void MediaSession_MediaPropertiesChanged(GlobalSystemMediaTransportControlsSession sender, MediaPropertiesChangedEventArgs args)
-        {
-            await UpdateMediaProperties(sender);
-        }
-
-        private async void MediaSession_PlaybackInfoChanged(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args)
-        {
-            await UpdatePlaybackInfo(sender);
+            switch (e.DataChangedEvent)
+            {
+                case MediaPlaybackDataChangedEvent.PlaybackInfoChanged:
+                    await UpdatePlaybackInfo(e.MediaPlaybackDataSource);
+                    break;
+                case MediaPlaybackDataChangedEvent.MediaInfoChanged:
+                    await UpdateMediaProperties(e.MediaPlaybackDataSource);
+                    break;
+                case MediaPlaybackDataChangedEvent.TimelinePropertiesChanged:
+                    await UpdateTimeline(e.MediaPlaybackDataSource);
+                    break;
+            }
         }
 
         private async void PreviousSessionButton_Click(object sender, RoutedEventArgs e)
@@ -273,49 +283,49 @@ namespace SMTC.GameBar
             await LoadSession();
         }
 
-        private async void PreviousButton_Click(object sender, RoutedEventArgs e)
+        private void PreviousButton_Click(object sender, RoutedEventArgs e)
         {
-            await MediaSession?.TrySkipPreviousAsync();
+            MediaPlaybackSource?.SendMediaPlaybackCommand(MediaPlaybackCommands.Previous);
         }
 
-        private async void RepeatButton_Click(object sender, RoutedEventArgs e)
+        private void RepeatButton_Click(object sender, RoutedEventArgs e)
         {
             var autoRepeatMode = PlayerViewModel.AutoRepeatMode switch
             {
-                Windows.Media.MediaPlaybackAutoRepeatMode.None => Windows.Media.MediaPlaybackAutoRepeatMode.Track,
-                Windows.Media.MediaPlaybackAutoRepeatMode.Track => Windows.Media.MediaPlaybackAutoRepeatMode.List,
-                Windows.Media.MediaPlaybackAutoRepeatMode.List => Windows.Media.MediaPlaybackAutoRepeatMode.None,
-                _ => Windows.Media.MediaPlaybackAutoRepeatMode.None,
+                MediaPlaybackRepeatMode.None => MediaPlaybackRepeatMode.Track,
+                MediaPlaybackRepeatMode.Track => MediaPlaybackRepeatMode.List,
+                MediaPlaybackRepeatMode.List => MediaPlaybackRepeatMode.None,
+                _ => MediaPlaybackRepeatMode.None,
             };
 
-            await MediaSession?.TryChangeAutoRepeatModeAsync(autoRepeatMode);
+            MediaPlaybackSource?.SendRepeatModeChangeRequest(autoRepeatMode);
         }
 
-        private async void ShuffleButton_Click(object sender, RoutedEventArgs e)
+        private void ShuffleButton_Click(object sender, RoutedEventArgs e)
         {
-            await MediaSession?.TryChangeShuffleActiveAsync(!PlayerViewModel.IsShuffleActive);
+            MediaPlaybackSource?.SendShuffleEnabledChangeRequest(!PlayerViewModel.IsShuffleActive);
         }
 
-        private async void PlayPauseButton_Click(object sender, RoutedEventArgs e)
+        private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
         {
             if (PlayerViewModel.IsPlaying)
             {
-                await MediaSession?.TryPauseAsync();
+                MediaPlaybackSource?.SendMediaPlaybackCommand(MediaPlaybackCommands.Pause);
             }
             else
             {
-                await MediaSession?.TryPlayAsync();
+                MediaPlaybackSource?.SendMediaPlaybackCommand(MediaPlaybackCommands.Play);
             }
         }
 
-        private async void NextButton_Click(object sender, RoutedEventArgs e)
+        private void NextButton_Click(object sender, RoutedEventArgs e)
         {
-            await MediaSession?.TrySkipNextAsync();
+            MediaPlaybackSource?.SendMediaPlaybackCommand(MediaPlaybackCommands.Next);
         }
 
-        private async void PlayerViewModel_PositionChanged(object sender, double e)
+        private void PlayerViewModel_PositionChanged(object sender, double e)
         {
-            await MediaSession?.TryChangePlaybackPositionAsync(TimeSpan.FromMilliseconds(e).Ticks);
+            MediaPlaybackSource?.SendPlaybackPositionChangeRequest(TimeSpan.FromMilliseconds(e));
         }
     }
 }

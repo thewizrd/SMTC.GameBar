@@ -1,10 +1,10 @@
-﻿using System;
+﻿using NPSMLib;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Windows.Media;
-using Windows.Media.Control;
 using Windows.Storage.Streams;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Data;
@@ -134,15 +134,15 @@ namespace SMTC.GameBar
         public static readonly DependencyProperty IsShuffleActiveProperty =
             DependencyProperty.Register("IsShuffleActive", typeof(bool), typeof(PlayerViewModel), new PropertyMetadata(false));
 
-        public MediaPlaybackAutoRepeatMode AutoRepeatMode
+        public MediaPlaybackRepeatMode AutoRepeatMode
         {
-            get { return (MediaPlaybackAutoRepeatMode)GetValue(AutoRepeatModeProperty); }
+            get { return (MediaPlaybackRepeatMode)GetValue(AutoRepeatModeProperty); }
             set { SetValue(AutoRepeatModeProperty, value); }
         }
 
-        // Using a DependencyProperty as the backing store for MyProperty.  This enables animation, styling, binding, etc...
+        // Using a DependencyProperty as the backing store for AutoRepeatMode.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty AutoRepeatModeProperty =
-            DependencyProperty.Register("AutoRepeatMode", typeof(MediaPlaybackAutoRepeatMode), typeof(PlayerViewModel), new PropertyMetadata(MediaPlaybackAutoRepeatMode.None));
+            DependencyProperty.Register("AutoRepeatMode", typeof(MediaPlaybackRepeatMode), typeof(PlayerViewModel), new PropertyMetadata(MediaPlaybackRepeatMode.None));
 
         public bool IsPlaying
         {
@@ -214,43 +214,41 @@ namespace SMTC.GameBar
         public static readonly DependencyProperty IsPlayPauseEnabledProperty =
             DependencyProperty.Register("IsPlayPauseEnabled", typeof(bool), typeof(PlayerViewModel), new PropertyMetadata(false));
 
-        public async Task UpdateThumbnail(IRandomAccessStreamReference thumbnail)
+        public async Task UpdateThumbnail(Stream thumbnailStream)
         {
-            if (thumbnail != null)
+            if (thumbnailStream != null)
             {
                 try
                 {
-                    using var thumbnailRef = await thumbnail.OpenReadAsync();
-
                     BitmapImage bmpImage = new()
                     {
                         DecodePixelWidth = 75,
                         CreateOptions = BitmapCreateOptions.None,
                     };
-                    await bmpImage.SetSourceAsync(thumbnailRef);
+                    await bmpImage.SetSourceAsync(thumbnailStream.AsRandomAccessStream());
 
 
                     ThumbnailImageSource = bmpImage;
                 }
-                catch { }
+                catch 
+                {
+                    ThumbnailImageSource = null;
+                }
             } else
             {
                 ThumbnailImageSource = null;
             }
         }
 
-        public void UpdateTimeline(GlobalSystemMediaTransportControlsSessionTimelineProperties timelineProperties)
+        public void UpdateTimeline(MediaTimelineProperties timelineProperties)
         {
-            if (timelineProperties != null)
-            {
-                // Set value without triggering event
-                SetValue(PositionMsProperty, timelineProperties.Position.TotalMilliseconds);
-                //PositionMs = timelineProperties.Position.TotalMilliseconds;
-                DurationMs = timelineProperties.EndTime.TotalMilliseconds;
+            // Set value without triggering event
+            SetValue(PositionMsProperty, timelineProperties.Position.TotalMilliseconds);
+            //PositionMs = timelineProperties.Position.TotalMilliseconds;
+            DurationMs = timelineProperties.EndTime.TotalMilliseconds;
 
-                PositionText = ConvertToTimestamp(timelineProperties.Position);
-                DurationText = ConvertToTimestamp(timelineProperties.EndTime);
-            }
+            PositionText = ConvertToTimestamp(timelineProperties.Position);
+            DurationText = ConvertToTimestamp(timelineProperties.EndTime);
         }
 
         private string ConvertToTimestamp(TimeSpan timeSpan)
