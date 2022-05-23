@@ -90,7 +90,7 @@ namespace SMTC.GameBar
         private async void ReloadSessions(NowPlayingSessionManager sessionManager)
         {
             MediaSessions = sessionManager?.GetSessions();
-            SessionIndex = FindIndexOfCurrentSession(sessionManager.CurrentSession);
+            SessionIndex = FindIndexOfCurrentSession(MediaSession ?? sessionManager.CurrentSession);
 
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
@@ -106,6 +106,8 @@ namespace SMTC.GameBar
                     PlayerViewModel.ShowNextSession = false;
                     PlayerViewModel.ShowPreviousSession = false;
                 }
+
+                PlayerViewModel.SessionsAvailable = (MediaSessions?.Count ?? 0) > 0;
             });
 
             await LoadSession();
@@ -166,7 +168,14 @@ namespace SMTC.GameBar
         {
             if (MediaPlaybackSource != null)
             {
-                MediaPlaybackSource.MediaPlaybackDataChanged -= MediaPlaybackSource_MediaPlaybackDataChanged;
+                try
+                {
+                    MediaPlaybackSource.MediaPlaybackDataChanged -= MediaPlaybackSource_MediaPlaybackDataChanged;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex);
+                }
             }
             MediaPlaybackSource = null;
             MediaSession = null;

@@ -123,6 +123,8 @@
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
     <Compile Include="BindingExtensions.cs" />
+    <Compile Include="Converters\BooleanToVisibilityConverter.cs" />
+    <Compile Include="Converters\CollectionToVisibilityConverter.cs" />
     <Compile Include="PlayerBindingExtensions.cs" />
     <Compile Include="PlayerViewModel.cs" />
     <Compile Include="PlayerWidget.xaml.cs">
@@ -222,6 +224,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <PRIResource Include="Strings\en\Resources.resw" />
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>

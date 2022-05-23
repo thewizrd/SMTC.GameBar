@@ -15,6 +15,16 @@ namespace SMTC.GameBar
 {
     public class PlayerViewModel : DependencyObject
     {
+        public bool SessionsAvailable
+        {
+            get { return (bool)GetValue(SessionsAvailableProperty); }
+            set { SetValue(SessionsAvailableProperty, value); }
+        }
+
+        // Using a DependencyProperty as the backing store for SessionsAvailable.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty SessionsAvailableProperty =
+            DependencyProperty.Register("SessionsAvailable", typeof(bool), typeof(PlayerViewModel), new PropertyMetadata(false));
+
         public bool ShowPreviousSession
         {
             get { return (bool)GetValue(ShowPreviousSessionProperty); }
