@@ -9,15 +9,15 @@
   IgnorableNamespaces="uap uap3 uap7 mp">
 
   <Identity
-    Name="e4fdb948-6f4f-4ba1-9c2e-08185b6c1956"
-    Publisher="CN=bryan"
+    Name="49586DaveAntoine.MediaControllerWidgetforGameBar"
+    Publisher="CN=FC137F73-0421-4275-8C89-E761F4D1BC3D"
     Version="1.0.0.0" />
 
-  <mp:PhoneIdentity PhoneProductId="e4fdb948-6f4f-4ba1-9c2e-08185b6c1956" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="9f2f6c73-997e-405b-9880-18b1996d1b1c" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>SMTC.GameBar</DisplayName>
-    <PublisherDisplayName>bryan</PublisherDisplayName>
+    <DisplayName>Media Controller Widget for Game Bar</DisplayName>
+    <PublisherDisplayName>Dave Antoine</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -34,13 +34,13 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="SMTC.GameBar.App">
       <uap:VisualElements
-        DisplayName="SMTC.GameBar"
+        DisplayName="Media Controller Widget for Game Bar"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
-        Description="SMTC.GameBar"
+        Description="Media Controller Widget for Xbox Game Bar"
         BackgroundColor="transparent"
 		AppListEntry="none">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" Square71x71Logo="Assets\SmallTile.png" Square310x310Logo="Assets\LargeTile.png"/>
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
 		<Extensions>
@@ -48,8 +48,8 @@
 				<uap3:AppExtension Name="microsoft.gameBarUIExtension"
 								   Id="SMTC.PlayerWidget"
 								   DisplayName="Media Controller"
-							   Description="Media Controller"
-							   PublicFolder="GameBar\Ext1">
+							   Description="Media Controller Widget for Xbox GameBar"
+							   PublicFolder="GameBarAssets">
 					<uap3:Properties>
 						<GameBarWidget Type="Standard">
 							<HomeMenuVisible>true</HomeMenuVisible>
