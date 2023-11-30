@@ -1,21 +1,19 @@
-﻿using Microsoft.Gaming.XboxGameBar;
+﻿#if !DEBUG
+using Microsoft.AppCenter;
+using Microsoft.AppCenter.Crashes;
+#endif
+using Microsoft.Gaming.XboxGameBar;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
+using TimberLog;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using UnhandledExceptionEventArgs = Windows.UI.Xaml.UnhandledExceptionEventArgs;
 
 namespace SMTC.GameBar
 {
@@ -34,6 +32,17 @@ namespace SMTC.GameBar
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending;
+            this.UnhandledException += OnUnhandledException;
+            TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+
+            // Add Loggers
+#if DEBUG
+            Timber.Plant(new Timber.DebugTree());
+            Timber.Plant(new Utils.FileLoggingTree());
+#else
+            Timber.Plant(new Utils.AppCenterLoggingTree());
+            AppCenter.Start(Keys.AppCenterKey.GetSecret(), typeof(Crashes));
+#endif
         }
 
         protected override void OnActivated(IActivatedEventArgs args)
@@ -174,6 +183,31 @@ namespace SMTC.GameBar
             playerWidget = null;
 
             deferral.Complete();
+        }
+
+        private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Timber.Log(LoggerLevel.Fatal, e.Exception, "Unhandled Exception: {0}", e.Message);
+
+            // Log inner exceptions
+            if (e.Exception is AggregateException agg)
+            {
+                foreach (Exception inner in agg.InnerExceptions)
+                {
+                    Timber.Log(LoggerLevel.Fatal, inner, "Unhandled Exception: {0}", inner.Message);
+                }
+            }
+        }
+
+        private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            Timber.Log(LoggerLevel.Fatal, e.Exception, "Unobserved Task Exception: Observed = {0}", e.Observed);
+
+            // Log inner exceptions
+            foreach (Exception inner in e.Exception.InnerExceptions)
+            {
+                Timber.Log(LoggerLevel.Fatal, inner, "Unobserved Task Exception: {0}", inner.Message);
+            }
         }
     }
 }
