@@ -40,7 +40,7 @@ namespace SMTC.GameBar
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            
+
             // you will need access to the XboxGameBarWidget, in this case it was passed as a parameter when navigating to the widget page, your implementation may differ.
             widget = e.Parameter as XboxGameBarWidget;
 
@@ -188,6 +188,12 @@ namespace SMTC.GameBar
                 PlayerViewModel.Title = mediaObjectInfo.Title;
                 PlayerViewModel.Artist = mediaObjectInfo.Artist;
                 PlayerViewModel.Album = mediaObjectInfo.AlbumTitle;
+
+                if (string.IsNullOrWhiteSpace(PlayerViewModel.Artist) && !string.IsNullOrWhiteSpace(mediaObjectInfo.AlbumArtist))
+                {
+                    PlayerViewModel.Artist = mediaObjectInfo.AlbumArtist;
+                }
+
                 await PlayerViewModel.UpdateThumbnail(thumbnailStream);
             });
         }
