@@ -74,7 +74,10 @@ namespace SMTC.GameBar
 
         private void NPSManager_SessionsChanged(object sender, NowPlayingSessionManagerEventArgs args)
         {
-            ReloadSessions(sender as NowPlayingSessionManager ?? NPSManager);
+            if (args.NotificationType != NowPlayingSessionManagerNotificationType.CurrentSessionChanged)
+            {
+                ReloadSessions(sender as NowPlayingSessionManager ?? NPSManager);
+            }
         }
 
         private async void ReloadSessions(NowPlayingSessionManager sessionManager)
