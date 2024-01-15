@@ -11,7 +11,7 @@
   <Identity
     Name="49586DaveAntoine.MediaControllerWidgetforGameBar"
     Publisher="CN=FC137F73-0421-4275-8C89-E761F4D1BC3D"
-    Version="1.0.3.0" />
+    Version="1.0.4.0" />
 
   <mp:PhoneIdentity PhoneProductId="9f2f6c73-997e-405b-9880-18b1996d1b1c" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
