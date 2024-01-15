@@ -13,6 +13,7 @@
 
     <Page.Resources>
         <local:ShuffleButtonTemplateSelector x:Key="shuffleButtonTemplateSelector" />
+        <local:RepeatButtonTemplateSelector x:Key="repeatButtonTemplateSelector" />
         <local:SliderDurationTooltipConverter x:Key="sliderTooltipConverter" />
         <converters:CollectionToVisibilityConverter x:Key="collectionToVisibilityConverter" />
         <converters:BooleanToVisibilityConverter x:Key="boolToVisibilityConverter" />
@@ -179,11 +180,9 @@
                         Background="Transparent"
                         BorderThickness="0"
                         Click="RepeatButton_Click"
-                        Visibility="{x:Bind PlayerViewModel.IsRepeatEnabled, Mode=OneWay}">
-                        <Button.Content>
-                            <FontIcon d:Glyph="&#xF5E7;" Glyph="{x:Bind local:PlayerBindingExtensions.RepeatModeGlyph(PlayerViewModel.AutoRepeatMode), Mode=OneWay}" />
-                        </Button.Content>
-                    </Button>
+                        Content="{x:Bind PlayerViewModel.AutoRepeatMode, Mode=OneWay}"
+                        ContentTemplateSelector="{StaticResource repeatButtonTemplateSelector}"
+                        Visibility="{x:Bind PlayerViewModel.IsRepeatEnabled, Mode=OneWay}" />
                 </Grid>
             </Grid>
         </Grid>

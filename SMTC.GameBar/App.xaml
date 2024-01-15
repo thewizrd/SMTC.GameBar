@@ -36,7 +36,16 @@
                         </Viewbox>
                     </DataTemplate>
                     <DataTemplate x:Key="ShuffleOnTemplate">
-                        <SymbolIcon Symbol="Shuffle" />
+                        <SymbolIcon Foreground="{ThemeResource SystemControlForegroundAccentBrush}" Symbol="Shuffle" />
+                    </DataTemplate>
+                    <DataTemplate x:Key="RepeatNoneTemplate">
+                        <FontIcon Foreground="{ThemeResource MediaButtonControlBrush}" Glyph="&#xF5E7;" />
+                    </DataTemplate>
+                    <DataTemplate x:Key="RepeatTrackTemplate">
+                        <FontIcon Foreground="{ThemeResource SystemControlForegroundAccentBrush}" Glyph="&#xE8ED;" />
+                    </DataTemplate>
+                    <DataTemplate x:Key="RepeatListTemplate">
+                        <FontIcon Foreground="{ThemeResource SystemControlForegroundAccentBrush}" Glyph="&#xE8EE;" />
                     </DataTemplate>
                 </ResourceDictionary>
             </muxc:XamlControlsResources.MergedDictionaries>

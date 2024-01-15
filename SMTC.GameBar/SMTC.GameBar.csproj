@@ -140,6 +140,7 @@
       <DependentUpon>PlayerWidget.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RepeatButtomTemplateSelector.cs" />
     <Compile Include="ShuffleButtonTemplateSelector.cs" />
     <Compile Include="SliderDurationTooltipConverter.cs" />
     <Compile Include="Utils\AppCenterLoggingTree.cs" />
